@@ -1,6 +1,7 @@
 import os
 import json
 from openai import OpenAI
+from anthropic import Anthropic
 
 class RevisionEngine:
     """
@@ -11,10 +12,16 @@ class RevisionEngine:
     def __init__(self, current_recipe: dict, user_command: str):
         self.recipe = current_recipe
         self.command = user_command
-        try:
-            self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-        except TypeError:
-            raise EnvironmentError("OPENAI_API_KEY environment variable not set.")
+        openai_key = os.environ.get("OPENAI_API_KEY")
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+
+        self.openai_client = OpenAI(api_key=openai_key) if openai_key else None
+        self.anthropic_client = Anthropic(api_key=anthropic_key) if anthropic_key else None
+
+        if not self.openai_client and not self.anthropic_client:
+            raise EnvironmentError(
+                "At least one of OPENAI_API_KEY or ANTHROPIC_API_KEY must be set."
+            )
 
     def _construct_prompt(self):
         system_prompt = """
@@ -42,20 +49,40 @@ class RevisionEngine:
     def revise(self):
         print(f"Contacting AI Creative Assistant with command: '{self.command}'")
         system_prompt, user_prompt = self._construct_prompt()
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-4-turbo",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.2,
-                response_format={"type": "json_object"}
-            )
-            response_content = response.choices[0].message.content
-            new_recipe = json.loads(response_content)
-            print("Successfully received and parsed revised recipe from AI assistant.")
-            return new_recipe
-        except Exception as e:
-            print(f"Error communicating with the AI assistant: {e}")
-            return self.recipe
+        # First attempt using OpenAI
+        if self.openai_client:
+            try:
+                response = self.openai_client.chat.completions.create(
+                    model="gpt-4.1-nano",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.2,
+                    response_format={"type": "json_object"}
+                )
+                response_content = response.choices[0].message.content
+                new_recipe = json.loads(response_content)
+                print("Successfully received recipe from OpenAI.")
+                return new_recipe
+            except Exception as e:
+                print(f"OpenAI failed: {e}")
+
+        # Fallback to Anthropic if OpenAI fails or wasn't configured
+        if self.anthropic_client:
+            try:
+                response = self.anthropic_client.messages.create(
+                    model="claude-4-opus-20250514",
+                    max_tokens=1024,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": user_prompt}]
+                )
+                response_content = response.content[0].text
+                new_recipe = json.loads(response_content)
+                print("Successfully received recipe from Anthropic.")
+                return new_recipe
+            except Exception as e:
+                print(f"Anthropic failed: {e}")
+
+        print("Both language models failed. Returning original recipe.")
+        return self.recipe
