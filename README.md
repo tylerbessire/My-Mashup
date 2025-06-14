@@ -58,9 +58,11 @@ python app.py
 cd Mashup-Studio-Frontend
 ```
 
-2. Install Node.js dependencies:
+2. Install Node.js dependencies (use `npm ci` to follow `package-lock.json` exactly):
 ```bash
 npm install
+# or for reproducible installs
+npm ci
 ```
 
 3. Start the development server:
@@ -115,13 +117,16 @@ Revise an existing mashup with new parameters.
 
 ### Backend
 - Flask 2.3.2
+- Flask-Cors 4.0.0
 - librosa 0.10.0
 - pydub 0.25.1
 - yt-dlp 2023.7.6
 - scipy >= 1.8.0
 - numpy >= 1.21.0
-- pyrubberband 0.3.0
+- pyrubberband >= 0.3.1
 - openai 1.3.3
+- python-dotenv >= 1.0.0
+- anthropic >= 0.54.0
 
 ### Frontend
 - React 18.3.1
