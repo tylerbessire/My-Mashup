@@ -3,7 +3,11 @@ import uuid
 from threading import Thread
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from dotenv import load_dotenv
 from tasks import create_mashup_task, revise_mashup_task
+
+# Load environment variables from a .env file if present
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app) # Allow cross-origin requests for our frontend
